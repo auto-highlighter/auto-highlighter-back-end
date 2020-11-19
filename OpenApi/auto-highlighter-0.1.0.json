@@ -1,0 +1,149 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Twitch auto highlighter",
+    "description": "This highlights vods automatically",
+    "contact": {
+      "email": "Ryan@DevRyan.io"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+    },
+    "version": "0.1.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "tags": [
+    {
+      "name": "users",
+      "description": "user calls"
+    }
+  ],
+  "paths": {
+    "/highlight": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "gets completed highlight",
+        "description": "When a highlight is available users will be able download it by id\n",
+        "operationId": "getHighlight",
+        "parameters": [
+          {
+            "name": "hid",
+            "in": "query",
+            "description": "highlight id",
+            "required": true,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "highlighted vod",
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "hid required"
+          },
+          "404": {
+            "description": "hid not found"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "create a highlight",
+        "description": "requests to create a highlight from a given vod\n",
+        "operationId": "postHighlight",
+        "requestBody": {
+          "content": {
+            "application/zip": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "creating highlight"
+          },
+          "400": {
+            "description": "bad zip / request body"
+          }
+        }
+      }
+    },
+    "/status": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "gets highlight status",
+        "description": "checks if a highlight is done to processing\n",
+        "operationId": "getHighlightStatus",
+        "parameters": [
+          {
+            "name": "hid",
+            "in": "query",
+            "description": "highlight id",
+            "required": true,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "is highlighted vod available",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "isAvailable": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "examples": {
+                  "Boolean Response": {
+                    "value": {
+                      "isAvailable": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "hid required"
+          },
+          "404": {
+            "description": "hid not found"
+          }
+        }
+      }
+    }
+  }
+}
