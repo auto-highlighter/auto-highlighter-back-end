@@ -1,4 +1,5 @@
-﻿using auto_highlighter_back_end.Responses;
+﻿using auto_highlighter_back_end.Enums;
+using auto_highlighter_back_end.DTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -6,6 +7,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using auto_highlighter_back_end.Repository;
+using auto_highlighter_back_end.Extentions;
 
 namespace auto_highlighter_back_end.Controllers
 {
@@ -14,35 +17,29 @@ namespace auto_highlighter_back_end.Controllers
     public class StatusController : ControllerBase
     {
 
-        private readonly ILogger<StatusController> _logger;
 
-        public StatusController(ILogger<StatusController> logger)
+        private readonly ILogger _logger;
+        private readonly ITempHighlightRepo _repository;
+
+        public StatusController(ITempHighlightRepo repository, ILogger<StatusController> logger)
         {
             _logger = logger;
+            _repository = repository;
         }
 
         [HttpGet("{hid}")]
-        public IActionResult Get(Guid hid)
+        public IActionResult GetHighlightStatus(Guid hid)
         {
 
             //get db stuff here instead of random numbers:)
+            HighlightStatusDTO response = _repository.GetHighlight(hid).AsDto();
 
-            Random rnd = new Random();
-            HighlightStatusResponse response = new HighlightStatusResponse
+            if(response is null)
             {
-                hid = hid
-            };
-
-            if (rnd.Next(1, 3) == 1)
-            {
-                response.Status = HighlightStatusEnum.Processing.ToString();
-            }
-            else
-            {
-                response.Status = HighlightStatusEnum.Ready.ToString();
+                return NotFound();
             }
 
-            return new OkObjectResult(response);
+            return Ok(response);
         }
     }
 }
