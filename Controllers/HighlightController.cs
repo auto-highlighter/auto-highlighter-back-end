@@ -10,6 +10,11 @@ using System.Threading.Tasks;
 using auto_highlighter_back_end.Repository;
 using auto_highlighter_back_end.Entity;
 using System.IO.Compression;
+using System.IO;
+using Microsoft.Extensions.Configuration;
+using System.Net.Http;
+using Microsoft.AspNetCore.Http;
+using System.Text;
 
 namespace auto_highlighter_back_end.Controllers
 {
@@ -19,11 +24,13 @@ namespace auto_highlighter_back_end.Controllers
     {
         private readonly ILogger _logger;
         private readonly ITempHighlightRepo _repository;
+        private readonly IConfiguration _config;
 
-        public HighlightController(ITempHighlightRepo repository, ILogger<HighlightController>   logger)
+        public HighlightController(ITempHighlightRepo repository, ILogger<HighlightController> logger, IConfiguration config)
         {
             _logger = logger;
             _repository = repository;
+            _config = config;
         }
 
         [HttpGet]
@@ -69,5 +76,51 @@ namespace auto_highlighter_back_end.Controllers
             return CreatedAtAction(nameof(CreateHighlight), new { id = highlightEntity.Hid }, highlightEntity.AsDto());
         }
 
+        [HttpPost("[controller]/[action]")]
+        [RequestFormLimits(MultipartBodyLengthLimit = long.MaxValue)]
+        [DisableRequestSizeLimit]
+        public async Task<IActionResult> Upload(IFormFile file)
+        {
+            _logger.LogInformation($"Request for file upload of {file.Length} Bytes ({file.Length / Math.Pow(10, 9)} GB)");
+
+            if (file is null)
+            {
+                return BadRequest();
+            }
+
+            string fileuploadPath = _config.GetValue<string>("FileUploadLocation");
+
+            using StreamReader sr = new(file.OpenReadStream());
+
+            string content = await sr.ReadToEndAsync();
+
+            _logger.LogInformation($"Content size is {System.Text.Encoding.ASCII.GetByteCount(content)}");
+
+            GC.Collect();
+
+            return CreatedAtAction(nameof(CreateHighlight), new { message = "Success" });
+
+        }
+
+        [HttpPost("[controller]/[action]")]
+        public IActionResult StartUpload(IFormFile file)
+        {
+            return StatusCode(501, new NotImplementedException());
+
+        }
+
+        [HttpPost("[controller]/[action]")]
+        public IActionResult UploadChunk(IFormFile file)
+        {
+            return StatusCode(501, new NotImplementedException());
+
+        }
+
+        [HttpPost("[controller]/[action]")]
+        public IActionResult FinishUpload(IFormFile file)
+        {
+            return StatusCode(501, new NotImplementedException());
+
+        }
     }
 }
