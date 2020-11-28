@@ -10,6 +10,13 @@ using System.Threading.Tasks;
 using auto_highlighter_back_end.Repository;
 using auto_highlighter_back_end.Entity;
 using System.IO.Compression;
+using System.IO;
+using Microsoft.Extensions.Configuration;
+using System.Net.Http;
+using Microsoft.AspNetCore.Http;
+using System.Text;
+using System.Net;
+using Microsoft.AspNetCore.Hosting;
 
 namespace auto_highlighter_back_end.Controllers
 {
@@ -19,11 +26,16 @@ namespace auto_highlighter_back_end.Controllers
     {
         private readonly ILogger _logger;
         private readonly ITempHighlightRepo _repository;
+        private readonly IConfiguration _config;
+        private readonly IWebHostEnvironment _env;
 
-        public HighlightController(ITempHighlightRepo repository, ILogger<HighlightController>   logger)
+        public HighlightController(ITempHighlightRepo repository, ILogger<HighlightController> logger, IConfiguration config, IWebHostEnvironment env)
         {
             _logger = logger;
             _repository = repository;
+            _config = config;
+            _env = env;
+
         }
 
         [HttpGet]
@@ -69,5 +81,23 @@ namespace auto_highlighter_back_end.Controllers
             return CreatedAtAction(nameof(CreateHighlight), new { id = highlightEntity.Hid }, highlightEntity.AsDto());
         }
 
+        [HttpPost("[action]")]
+        [RequestFormLimits(MultipartBodyLengthLimit = long.MaxValue)]
+        [DisableRequestSizeLimit]
+        public async Task<IActionResult> Upload(IFormFile file)
+        {
+            string uploads = Path.Combine(_env.ContentRootPath, _config.GetValue<string>("FileUploadLocation"));
+
+            if (file.Length > 0)
+            {
+                string filePath = Path.Combine(uploads, file.FileName);
+
+                using Stream fileStream = new FileStream(filePath, FileMode.Create);
+
+                await file.CopyToAsync(fileStream);
+            }
+
+            return CreatedAtAction(nameof(CreateHighlight), new { message = "Success" });
+        }
     }
 }
