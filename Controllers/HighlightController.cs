@@ -99,27 +99,5 @@ namespace auto_highlighter_back_end.Controllers
 
             return CreatedAtAction(nameof(CreateHighlight), new { message = "Success" });
         }
-
-        // chunked is on hold for now
-        /*[HttpPost("[controller]/[action]")]
-        public IActionResult StartUpload(IFormFile file)
-        {
-            return StatusCode(501, new NotImplementedException());
-
-        }
-
-        [HttpPost("[controller]/[action]")]
-        public IActionResult UploadChunk(IFormFile file)
-        {
-            return StatusCode(501, new NotImplementedException());
-
-        }
-
-        [HttpPost("[controller]/[action]")]
-        public IActionResult FinishUpload(IFormFile file)
-        {
-            return StatusCode(501, new NotImplementedException());
-
-        }*/
     }
 }
