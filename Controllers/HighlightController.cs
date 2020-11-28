@@ -81,7 +81,7 @@ namespace auto_highlighter_back_end.Controllers
             return CreatedAtAction(nameof(CreateHighlight), new { id = highlightEntity.Hid }, highlightEntity.AsDto());
         }
 
-        [HttpPost("[controller]/[action]")]
+        [HttpPost("[action]")]
         [RequestFormLimits(MultipartBodyLengthLimit = long.MaxValue)]
         [DisableRequestSizeLimit]
         public async Task<IActionResult> Upload(IFormFile file)
