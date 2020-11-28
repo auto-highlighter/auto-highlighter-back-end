@@ -15,6 +15,8 @@ using Microsoft.Extensions.Configuration;
 using System.Net.Http;
 using Microsoft.AspNetCore.Http;
 using System.Text;
+using System.Net;
+using Microsoft.AspNetCore.Hosting;
 
 namespace auto_highlighter_back_end.Controllers
 {
@@ -25,12 +27,15 @@ namespace auto_highlighter_back_end.Controllers
         private readonly ILogger _logger;
         private readonly ITempHighlightRepo _repository;
         private readonly IConfiguration _config;
+        private readonly IWebHostEnvironment _env;
 
-        public HighlightController(ITempHighlightRepo repository, ILogger<HighlightController> logger, IConfiguration config)
+        public HighlightController(ITempHighlightRepo repository, ILogger<HighlightController> logger, IConfiguration config, IWebHostEnvironment env)
         {
             _logger = logger;
             _repository = repository;
             _config = config;
+            _env = env;
+
         }
 
         [HttpGet]
@@ -81,28 +86,22 @@ namespace auto_highlighter_back_end.Controllers
         [DisableRequestSizeLimit]
         public async Task<IActionResult> Upload(IFormFile file)
         {
-            _logger.LogInformation($"Request for file upload of {file.Length} Bytes ({file.Length / Math.Pow(10, 9)} GB)");
+            string uploads = Path.Combine(_env.ContentRootPath, _config.GetValue<string>("FileUploadLocation"));
 
-            if (file is null)
+            if (file.Length > 0)
             {
-                return BadRequest();
+                string filePath = Path.Combine(uploads, file.FileName);
+
+                using Stream fileStream = new FileStream(filePath, FileMode.Create);
+
+                await file.CopyToAsync(fileStream);
             }
 
-            string fileuploadPath = _config.GetValue<string>("FileUploadLocation");
-
-            using StreamReader sr = new(file.OpenReadStream());
-
-            string content = await sr.ReadToEndAsync();
-
-            _logger.LogInformation($"Content size is {System.Text.Encoding.ASCII.GetByteCount(content)}");
-
-            GC.Collect();
-
             return CreatedAtAction(nameof(CreateHighlight), new { message = "Success" });
-
         }
 
-        [HttpPost("[controller]/[action]")]
+        // chunked is on hold for now
+        /*[HttpPost("[controller]/[action]")]
         public IActionResult StartUpload(IFormFile file)
         {
             return StatusCode(501, new NotImplementedException());
@@ -121,6 +120,6 @@ namespace auto_highlighter_back_end.Controllers
         {
             return StatusCode(501, new NotImplementedException());
 
-        }
+        }*/
     }
 }
