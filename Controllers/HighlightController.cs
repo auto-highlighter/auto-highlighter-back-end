@@ -41,7 +41,6 @@ namespace auto_highlighter_back_end.Controllers
             _config = config;
             _env = env;
             _blobService = blobService;
-
         }
 
         [HttpGet]
@@ -104,8 +103,6 @@ namespace auto_highlighter_back_end.Controllers
                     file.FileName);
 
             return CreatedAtAction(nameof(CreateHighlight), result.AbsoluteUri);
-
-
         }
     }
 }
