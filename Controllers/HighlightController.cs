@@ -9,7 +9,18 @@ using System.Linq;
 using System.Threading.Tasks;
 using auto_highlighter_back_end.Repository;
 using auto_highlighter_back_end.Entity;
-using System.IO.Compression;
+using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Hosting;
+using auto_highlighter_back_end.Services;
+using Microsoft.AspNetCore.Http;
+using System.Text;
+using System.Net;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using System.Text;
+using System.Net;
+using Microsoft.AspNetCore.Hosting;
 
 namespace auto_highlighter_back_end.Controllers
 {
@@ -19,11 +30,18 @@ namespace auto_highlighter_back_end.Controllers
     {
         private readonly ILogger _logger;
         private readonly ITempHighlightRepo _repository;
+        private readonly IConfiguration _config;
+        private readonly IWebHostEnvironment _env;
+        private readonly IBlobService _blobService;
 
-        public HighlightController(ITempHighlightRepo repository, ILogger<HighlightController>   logger)
+        public HighlightController(ITempHighlightRepo repository, ILogger<HighlightController> logger, IConfiguration config, IWebHostEnvironment env, IBlobService blobService)
         {
             _logger = logger;
             _repository = repository;
+            _config = config;
+            _env = env;
+            _blobService = blobService;
+
         }
 
         [HttpGet]
@@ -69,5 +87,25 @@ namespace auto_highlighter_back_end.Controllers
             return CreatedAtAction(nameof(CreateHighlight), new { id = highlightEntity.Hid }, highlightEntity.AsDto());
         }
 
+        [HttpPost("[action]")]
+        [RequestFormLimits(MultipartBodyLengthLimit = long.MaxValue)]
+        [DisableRequestSizeLimit]
+        public async Task<IActionResult> UploadVodToBlob(IFormFile file)
+        {
+            if (file == null)
+            {
+                return BadRequest();
+            }
+
+            var result = await _blobService.UploadFileBlobAsync(
+                    "vods",
+                    file.OpenReadStream(),
+                    file.ContentType,
+                    file.FileName);
+
+            return CreatedAtAction(nameof(CreateHighlight), result.AbsoluteUri);
+
+
+        }
     }
 }
