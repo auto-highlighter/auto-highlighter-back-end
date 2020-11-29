@@ -1,5 +1,7 @@
 using auto_highlighter_back_end.DataAccess;
 using auto_highlighter_back_end.Repository;
+using auto_highlighter_back_end.Services;
+using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -29,6 +31,8 @@ namespace auto_highlighter_back_end
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddSingleton<ITempHighlightRepo, TempHighlightRepo>();
+            services.AddScoped(x => new BlobServiceClient(Configuration["ConnectionStrings:AzureBlobStorage"]));
+            services.AddScoped<IBlobService, BlobService>();
             //services.AddDbContext<HighlightContext>(options => { options.UseSqlServer(); });
             services.AddControllers();
             services.AddSwaggerGen(c =>
