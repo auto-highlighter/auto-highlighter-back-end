@@ -24,16 +24,24 @@ namespace auto_highlighter_back_end.Services
             _logger.LogInformation($"Processing video {hid}");
 
             HighlightEntity highlightEntity = _repository.GetHighlight(hid);
-            HighlightEntity newHighlight = new()
+            highlightEntity = new()
+            {
+                Hid = highlightEntity.Hid,
+                Status = HighlightStatusEnum.Processing.ToString(),
+                CreatedTimestamp = highlightEntity.CreatedTimestamp
+            };
+
+            _repository.UpdateHighlight(highlightEntity);
+
+            await Task.Delay(10000); //simulate processing
+            highlightEntity = new()
             {
                 Hid = highlightEntity.Hid,
                 Status = HighlightStatusEnum.Done.ToString(),
                 CreatedTimestamp = highlightEntity.CreatedTimestamp
             };
 
-            await Task.Delay(1000); //simulate processing
-
-            _repository.UpdateHighlight(newHighlight);
+            _repository.UpdateHighlight(highlightEntity);
             _logger.LogInformation($"Finished video {hid}");
         }
     }

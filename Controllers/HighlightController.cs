@@ -9,13 +9,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using auto_highlighter_back_end.Repository;
 using auto_highlighter_back_end.Entity;
-using System.IO.Compression;
 using System.IO;
 using Microsoft.Extensions.Configuration;
-using System.Net.Http;
 using Microsoft.AspNetCore.Http;
-using System.Text;
-using System.Net;
 using Microsoft.AspNetCore.Hosting;
 using auto_highlighter_back_end.Services;
 
@@ -66,14 +62,21 @@ namespace auto_highlighter_back_end.Controllers
                 return NotFound();
             }
 
+            if (response.Status == HighlightStatusEnum.Done.ToString())
+            {
+                return Accepted();
+            }
+
             string filePath = Path.Combine(
                 _env.ContentRootPath,
                 _config.GetValue<string>("FileUploadLocation"),
                 response.Hid.ToString());
 
-            return File(
-                await System.IO.File.ReadAllBytesAsync(filePath),
-                "video/mp4");
+            byte[] file = await System.IO.File.ReadAllBytesAsync(filePath);
+
+            System.IO.File.Delete(filePath);
+
+            return File(file, "video/mp4");
         }
 
         [HttpPost]
@@ -90,7 +93,11 @@ namespace auto_highlighter_back_end.Controllers
             Guid hid = Guid.NewGuid();
 
 
-            string filePath = Path.Combine(_env.ContentRootPath, _config.GetValue<string>("FileUploadLocation"), hid.ToString());
+            string filePath = Path.Combine(_env.ContentRootPath, _config.GetValue<string>("FileUploadLocation"));
+
+            Directory.CreateDirectory(filePath);
+
+            filePath = Path.Combine(filePath, hid.ToString());
 
             using Stream fileStream = new FileStream(filePath, FileMode.Create);
 
@@ -99,7 +106,7 @@ namespace auto_highlighter_back_end.Controllers
             HighlightEntity highlightEntity = new()
             {
                 Hid = hid,
-                Status = HighlightStatusEnum.Processing.ToString(),
+                Status = HighlightStatusEnum.Ready.ToString(),
                 CreatedTimestamp = DateTimeOffset.UtcNow
             };
 
