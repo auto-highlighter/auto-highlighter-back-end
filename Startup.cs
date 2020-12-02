@@ -31,8 +31,9 @@ namespace auto_highlighter_back_end
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddSingleton<ITempHighlightRepo, TempHighlightRepo>();
-            services.AddScoped(x => new BlobServiceClient(Configuration["ConnectionStrings:AzureBlobStorage"]));
-            services.AddScoped<IBlobService, BlobService>();
+            services.AddSingleton<IVideoProcessService, VideoProcessService>();
+            //services.AddScoped(x => new BlobServiceClient(Configuration["ConnectionStrings:AzureBlobStorage"]));
+            //services.AddScoped<IBlobService, BlobService>();
             //services.AddDbContext<HighlightContext>(options => { options.UseSqlServer(); });
             services.AddControllers();
             services.AddSwaggerGen(c =>

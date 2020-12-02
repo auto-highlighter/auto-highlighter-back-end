@@ -9,13 +9,7 @@ namespace auto_highlighter_back_end.Repository
 {
     public class TempHighlightRepo : ITempHighlightRepo
     {
-        private readonly List<HighlightEntity> highlights = new()
-        {
-            new HighlightEntity { Hid = Guid.NewGuid(), Status = HighlightStatusEnum.Ready.ToString(), CreatedTimestamp = DateTimeOffset.UtcNow },
-            new HighlightEntity { Hid = Guid.NewGuid(), Status = HighlightStatusEnum.Ready.ToString(), CreatedTimestamp = DateTimeOffset.UtcNow },
-            new HighlightEntity { Hid = Guid.NewGuid(), Status = HighlightStatusEnum.Ready.ToString(), CreatedTimestamp = DateTimeOffset.UtcNow },
-            new HighlightEntity { Hid = Guid.NewGuid(), Status = HighlightStatusEnum.Ready.ToString(), CreatedTimestamp = DateTimeOffset.UtcNow },
-        };
+        private readonly List<HighlightEntity> highlights = new();
 
         public IEnumerable<HighlightEntity> GetHighlights()
         {
@@ -24,12 +18,20 @@ namespace auto_highlighter_back_end.Repository
 
         public HighlightEntity GetHighlight(Guid hid)
         {
-            return highlights.Where(highlight => highlight.Hid == hid).SingleOrDefault();
+
+            return (from highlight in highlights
+                    where highlight.Hid == hid
+                    select highlight).SingleOrDefault();
         }
 
         public void CreateHighlight(HighlightEntity highlight)
         {
             highlights.Add(highlight);
+        }
+
+        public void UpdateHighlight(HighlightEntity newHighlight)
+        {
+            highlights[highlights.FindIndex((repoHighlight) => repoHighlight.Hid == newHighlight.Hid)] = newHighlight;
         }
     }
 }

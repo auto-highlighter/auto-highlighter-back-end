@@ -29,16 +29,17 @@ namespace auto_highlighter_back_end.Controllers
         private readonly ITempHighlightRepo _repository;
         private readonly IConfiguration _config;
         private readonly IWebHostEnvironment _env;
+        //private readonly IBlobService _blobService;
+        private readonly IVideoProcessService _videoProcessService;
 
-        private readonly IBlobService _blobService;
-
-        public HighlightController(ITempHighlightRepo repository, ILogger<HighlightController> logger, IConfiguration config, IWebHostEnvironment env, IBlobService blobService)
+        public HighlightController(ITempHighlightRepo repository, ILogger<HighlightController> logger, IConfiguration config, IWebHostEnvironment env, IVideoProcessService videoProcessService)
         {
             _logger = logger;
             _repository = repository;
             _config = config;
             _env = env;
-            _blobService = blobService;
+            //_blobService = blobService;
+            _videoProcessService = videoProcessService;
 
         }
 
@@ -54,28 +55,50 @@ namespace auto_highlighter_back_end.Controllers
         }
 
         [HttpGet("{hid}")]
-        public IActionResult DownloadHighlight(Guid hid)
+        public async Task<IActionResult> DownloadHighlight(Guid hid)
         {
 
             //get db stuff here instead of random numbers:)
-            HighlightStatusDTO response = _repository.GetHighlight(hid).AsDto();
+            HighlightEntity response = _repository.GetHighlight(hid);
 
             if (response is null)
             {
                 return NotFound();
             }
 
-            return File(Array.Empty<byte>(), "application/zip");
+            string filePath = Path.Combine(
+                _env.ContentRootPath,
+                _config.GetValue<string>("FileUploadLocation"),
+                response.Hid.ToString());
+
+            return File(
+                await System.IO.File.ReadAllBytesAsync(filePath),
+                "video/mp4");
         }
 
         [HttpPost]
-        public IActionResult CreateHighlight()
+        [RequestFormLimits(MultipartBodyLengthLimit = long.MaxValue)]
+        [DisableRequestSizeLimit]
+        public async Task<IActionResult> CreateHighlight(IFormFile file)
         {
 
-            //get db stuff here instead of random numbers:)
+            if (file.Length <= 0)
+            {
+                return BadRequest();
+            }
+
+            Guid hid = Guid.NewGuid();
+
+
+            string filePath = Path.Combine(_env.ContentRootPath, _config.GetValue<string>("FileUploadLocation"), hid.ToString());
+
+            using Stream fileStream = new FileStream(filePath, FileMode.Create);
+
+            await file.CopyToAsync(fileStream);
+
             HighlightEntity highlightEntity = new()
             {
-                Hid = Guid.NewGuid(),
+                Hid = hid,
                 Status = HighlightStatusEnum.Processing.ToString(),
                 CreatedTimestamp = DateTimeOffset.UtcNow
             };
@@ -85,11 +108,20 @@ namespace auto_highlighter_back_end.Controllers
             return CreatedAtAction(nameof(CreateHighlight), new { id = highlightEntity.Hid }, highlightEntity.AsDto());
         }
 
+        [HttpPut("{hid}")]
+        public async Task<IActionResult> ProccessHighlight(Guid hid)
+        {
+            await _videoProcessService.ProcessHightlightAsync(hid);
+            return Ok();
+        }
+
         [HttpPost("[action]")]
         [RequestFormLimits(MultipartBodyLengthLimit = long.MaxValue)]
         [DisableRequestSizeLimit]
-        public async Task<IActionResult> Upload(IFormFile file)
+        public IActionResult UploadToBlob(IFormFile file)
         {
+            return StatusCode(StatusCodes.Status501NotImplemented);
+            /* Leaving all this commented for now for MVP 
             if (file is null)
             {
                 return BadRequest();
@@ -101,7 +133,7 @@ namespace auto_highlighter_back_end.Controllers
                     file.ContentType,
                     file.FileName);
 
-            return CreatedAtAction(nameof(CreateHighlight), result.AbsoluteUri);
+            return CreatedAtAction(nameof(CreateHighlight), result.AbsoluteUri);*/
         }
     }
 }

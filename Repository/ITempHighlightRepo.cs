@@ -1,4 +1,4 @@
-﻿    using auto_highlighter_back_end.Entity;
+﻿using auto_highlighter_back_end.Entity;
 using System;
 using System.Collections.Generic;
 
@@ -9,5 +9,6 @@ namespace auto_highlighter_back_end.Repository
         HighlightEntity GetHighlight(Guid hid);
         IEnumerable<HighlightEntity> GetHighlights();
         void CreateHighlight(HighlightEntity highlight);
+        void UpdateHighlight(HighlightEntity newHighlight);
     }
 }

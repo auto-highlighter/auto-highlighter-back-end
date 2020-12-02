@@ -7,7 +7,8 @@ namespace auto_highlighter_back_end.Enums
 {
     public enum HighlightStatusEnum
     {
+        Ready,
         Processing,
-        Ready
+        Done
     }
 }
