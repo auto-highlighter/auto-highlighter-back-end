@@ -33,5 +33,15 @@ namespace auto_highlighter_back_end.Repository
         {
             highlights[highlights.FindIndex((repoHighlight) => repoHighlight.Hid == newHighlight.Hid)] = newHighlight;
         }
+
+        public HighlightEntity RemoveHighlight(Guid hid)
+        {
+            HighlightEntity highlight = (from h in highlights
+                                         where h.Hid == hid
+                                         select h).SingleOrDefault();
+            highlights.Remove(highlight);
+
+            return highlight;
+        }
     }
 }

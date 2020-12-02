@@ -9,6 +9,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using auto_highlighter_back_end.Repository;
 using auto_highlighter_back_end.Extentions;
+using auto_highlighter_back_end.Entity;
 
 namespace auto_highlighter_back_end.Controllers
 {
@@ -32,12 +33,14 @@ namespace auto_highlighter_back_end.Controllers
         {
 
             //get db stuff here instead of random numbers:)
-            HighlightStatusDTO response = _repository.GetHighlight(hid).AsDto();
+            HighlightEntity highlight = _repository.GetHighlight(hid);
 
-            if(response is null)
+            if(highlight is null)
             {
                 return NotFound();
             }
+
+            HighlightStatusDTO response = highlight.AsDto();
 
             return Ok(response);
         }

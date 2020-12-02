@@ -10,5 +10,6 @@ namespace auto_highlighter_back_end.Repository
         IEnumerable<HighlightEntity> GetHighlights();
         void CreateHighlight(HighlightEntity highlight);
         void UpdateHighlight(HighlightEntity newHighlight);
+        HighlightEntity RemoveHighlight(Guid hid);
     }
 }

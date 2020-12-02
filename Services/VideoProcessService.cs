@@ -19,30 +19,29 @@ namespace auto_highlighter_back_end.Services
             _logger = logger;
             _repository = repository;
         }
-        public async Task ProcessHightlightAsync(Guid hid)
+        public async Task ProcessHightlightAsync(HighlightEntity highlight)
         {
-            _logger.LogInformation($"Processing video {hid}");
+            _logger.LogInformation($"Processing video {highlight.Hid}");
 
-            HighlightEntity highlightEntity = _repository.GetHighlight(hid);
-            highlightEntity = new()
+            highlight = new()
             {
-                Hid = highlightEntity.Hid,
+                Hid = highlight.Hid,
                 Status = HighlightStatusEnum.Processing.ToString(),
-                CreatedTimestamp = highlightEntity.CreatedTimestamp
+                CreatedTimestamp = highlight.CreatedTimestamp
             };
 
-            _repository.UpdateHighlight(highlightEntity);
+            _repository.UpdateHighlight(highlight);
 
-            await Task.Delay(10000); //simulate processing
-            highlightEntity = new()
+            await Task.Delay(1000); //simulate processing
+            highlight = new()
             {
-                Hid = highlightEntity.Hid,
+                Hid = highlight.Hid,
                 Status = HighlightStatusEnum.Done.ToString(),
-                CreatedTimestamp = highlightEntity.CreatedTimestamp
+                CreatedTimestamp = highlight.CreatedTimestamp
             };
 
-            _repository.UpdateHighlight(highlightEntity);
-            _logger.LogInformation($"Finished video {hid}");
+            _repository.UpdateHighlight(highlight);
+            _logger.LogInformation($"Finished video {highlight.Hid}");
         }
     }
 }

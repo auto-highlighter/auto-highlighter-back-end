@@ -55,26 +55,27 @@ namespace auto_highlighter_back_end.Controllers
         {
 
             //get db stuff here instead of random numbers:)
-            HighlightEntity response = _repository.GetHighlight(hid);
+            HighlightEntity highlight = _repository.GetHighlight(hid);
 
-            if (response is null)
+            if (highlight is null)
             {
                 return NotFound();
             }
 
-            if (response.Status != HighlightStatusEnum.Done.ToString())
+            if (highlight.Status != HighlightStatusEnum.Done.ToString())
             {
-                return Accepted();
+                return Accepted(highlight);
             }
 
             string filePath = Path.Combine(
                 _env.ContentRootPath,
                 _config.GetValue<string>("FileUploadLocation"),
-                response.Hid.ToString());
+                highlight.Hid.ToString());
 
             byte[] file = await System.IO.File.ReadAllBytesAsync(filePath);
 
             System.IO.File.Delete(filePath);
+            _repository.RemoveHighlight(hid);
 
             return File(file, "video/mp4");
         }
@@ -118,8 +119,15 @@ namespace auto_highlighter_back_end.Controllers
         [HttpPut("{hid}")]
         public async Task<IActionResult> ProccessHighlight(Guid hid)
         {
-            await _videoProcessService.ProcessHightlightAsync(hid);
-            return Ok();
+
+            HighlightEntity highlight = _repository.GetHighlight(hid);
+            if (highlight is null)
+            {
+                return NotFound();
+            }
+
+            await _videoProcessService.ProcessHightlightAsync(highlight);
+            return NoContent();
         }
 
         [HttpPost("[action]")]
