@@ -62,7 +62,7 @@ namespace auto_highlighter_back_end.Controllers
                 return NotFound();
             }
 
-            if (response.Status == HighlightStatusEnum.Done.ToString())
+            if (response.Status != HighlightStatusEnum.Done.ToString())
             {
                 return Accepted();
             }
