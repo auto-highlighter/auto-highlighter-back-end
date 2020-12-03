@@ -14,6 +14,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
 using auto_highlighter_back_end.Services;
+using auto_highlighter_back_end.Attributes;
 
 namespace auto_highlighter_back_end.Controllers
 {
@@ -40,6 +41,7 @@ namespace auto_highlighter_back_end.Controllers
         }
 
         [HttpGet]
+        [RateLimit(1000)]
         public IActionResult GetHighlights()
         {
 
@@ -51,6 +53,7 @@ namespace auto_highlighter_back_end.Controllers
         }
 
         [HttpGet("{hid}")]
+        [RateLimit(10000)]
         public async Task<IActionResult> DownloadHighlight(Guid hid)
         {
 
@@ -85,6 +88,7 @@ namespace auto_highlighter_back_end.Controllers
         [HttpPost]
         [RequestFormLimits(MultipartBodyLengthLimit = long.MaxValue)]
         [DisableRequestSizeLimit]
+        [RateLimit(10000)]
         public async Task<IActionResult> CreateHighlight(IFormFile vod, IFormFile timeStamps)
         {
 
@@ -123,6 +127,7 @@ namespace auto_highlighter_back_end.Controllers
         }
 
         [HttpPut("{hid}")]
+        [RateLimit(1000)]
         public async Task<IActionResult> ProccessHighlight(Guid hid)
         {
 
@@ -139,6 +144,7 @@ namespace auto_highlighter_back_end.Controllers
         [HttpPost("[action]")]
         [RequestFormLimits(MultipartBodyLengthLimit = long.MaxValue)]
         [DisableRequestSizeLimit]
+        [RateLimit(10000)]
         public IActionResult UploadToBlob(IFormFile file)
         {
             return StatusCode(StatusCodes.Status501NotImplemented);
