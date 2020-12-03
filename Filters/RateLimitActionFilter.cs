@@ -32,22 +32,29 @@ namespace auto_highlighter_back_end.Filters
         {
             RateLimitAttribute rateLimitAttribute = context.ActionDescriptor.FilterDescriptors
             .Select(x => x.Filter).OfType<RateLimitAttribute>().FirstOrDefault();
+
+            string actionName = context.ActionDescriptor.DisplayName;
+            string controllerName = context.Controller.GetType().FullName;
+
             if (rateLimitAttribute is not null)
             {
                 bool testProxy = context.HttpContext.Request.Headers.ContainsKey("X-Forwarded-For");
-                int key = 0;
+                int ipHash = 0;
                 if (testProxy)
                 {
                     bool ipAddress = IPAddress.TryParse(context.HttpContext.Request.Headers["X-Forwarded-For"], out IPAddress realClient);
                     if (ipAddress)
                     {
-                        key = realClient.GetHashCode();
+                        ipHash = realClient.GetHashCode();
                     }
                 }
-                if (key != 0)
+                if (ipHash != 0)
                 {
-                    key = context.HttpContext.Connection.RemoteIpAddress.GetHashCode();
+                    ipHash = context.HttpContext.Connection.RemoteIpAddress.GetHashCode();
                 }
+
+                string key = actionName + controllerName + ipHash;
+
                 _cache.TryGetValue(key, out bool forbidExecute);
                 if (forbidExecute)
                 {
