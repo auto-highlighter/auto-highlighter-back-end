@@ -1,15 +1,11 @@
-﻿using auto_highlighter_back_end.Enums;
-using auto_highlighter_back_end.DTOs;
-using Microsoft.AspNetCore.Http;
+﻿using auto_highlighter_back_end.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using auto_highlighter_back_end.Repository;
 using auto_highlighter_back_end.Extentions;
 using auto_highlighter_back_end.Entity;
+using auto_highlighter_back_end.Attributes;
 
 namespace auto_highlighter_back_end.Controllers
 {
@@ -29,6 +25,7 @@ namespace auto_highlighter_back_end.Controllers
         }
 
         [HttpGet("{hid}")]
+        [RateLimit(1000)]
         public IActionResult GetHighlightStatus(Guid hid)
         {
 

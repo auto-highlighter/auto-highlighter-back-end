@@ -1,4 +1,5 @@
 using auto_highlighter_back_end.DataAccess;
+using auto_highlighter_back_end.Filters;
 using auto_highlighter_back_end.Repository;
 using auto_highlighter_back_end.Services;
 using Azure.Storage.Blobs;
@@ -30,12 +31,19 @@ namespace auto_highlighter_back_end
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddSingleton<ITempHighlightRepo, TempHighlightRepo>();
-            services.AddSingleton<IVideoProcessService, VideoProcessService>();
             //services.AddScoped(x => new BlobServiceClient(Configuration["ConnectionStrings:AzureBlobStorage"]));
             //services.AddScoped<IBlobService, BlobService>();
             //services.AddDbContext<HighlightContext>(options => { options.UseSqlServer(); });
-            services.AddControllers();
+
+            services.AddMemoryCache();
+
+            services.AddSingleton<ITempHighlightRepo, TempHighlightRepo>();
+            services.AddSingleton<IVideoProcessService, VideoProcessService>();
+            
+            services.AddControllers(options =>
+            {
+                options.Filters.Add<RateLimitActionFilter>();
+            });
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "auto_highlighter_back_end", Version = "v1" });
