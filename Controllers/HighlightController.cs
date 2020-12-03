@@ -67,14 +67,16 @@ namespace auto_highlighter_back_end.Controllers
                 return Accepted(highlight);
             }
 
-            string filePath = Path.Combine(
-                _env.ContentRootPath,
-                _config.GetValue<string>("FileUploadLocation"),
-                highlight.Hid.ToString());
 
-            byte[] file = await System.IO.File.ReadAllBytesAsync(filePath);
+            string filePath = Path.Combine(_env.ContentRootPath, _config.GetValue<string>("FileUploadLocation"), hid.ToString());
 
-            System.IO.File.Delete(filePath);
+            string vodFilePath = filePath + ".mp4";
+            string timeStampsFilePath = filePath + ".json";
+
+            byte[] file = await System.IO.File.ReadAllBytesAsync(vodFilePath);
+
+            System.IO.File.Delete(vodFilePath);
+            System.IO.File.Delete(timeStampsFilePath);
             _repository.RemoveHighlight(hid);
 
             return File(file, "video/mp4");
@@ -83,10 +85,10 @@ namespace auto_highlighter_back_end.Controllers
         [HttpPost]
         [RequestFormLimits(MultipartBodyLengthLimit = long.MaxValue)]
         [DisableRequestSizeLimit]
-        public async Task<IActionResult> CreateHighlight(IFormFile file)
+        public async Task<IActionResult> CreateHighlight(IFormFile vod, IFormFile timeStamps)
         {
 
-            if (file.Length <= 0)
+            if (vod is null || timeStamps is null || vod.Length <= 0 || timeStamps.Length <= 0)
             {
                 return BadRequest();
             }
@@ -98,11 +100,15 @@ namespace auto_highlighter_back_end.Controllers
 
             Directory.CreateDirectory(filePath);
 
-            filePath = Path.Combine(filePath, hid.ToString());
+            string vodFilePath = Path.Combine(filePath, hid.ToString() + Path.GetExtension(vod.FileName));
+            string timeStampsFilePath = Path.Combine(filePath, hid.ToString() + Path.GetExtension(timeStamps.FileName));
 
-            using Stream fileStream = new FileStream(filePath, FileMode.Create);
+            using Stream vodFileStream = new FileStream(vodFilePath, FileMode.Create);
+            using Stream timeStampsFileStream = new FileStream(timeStampsFilePath, FileMode.Create);
 
-            await file.CopyToAsync(fileStream);
+            _ = timeStamps.CopyToAsync(timeStampsFileStream);
+            await vod.CopyToAsync(vodFileStream);
+
 
             HighlightEntity highlightEntity = new()
             {
