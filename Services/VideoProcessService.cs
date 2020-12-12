@@ -7,7 +7,6 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Threading.Tasks;
 using Utf8Json;
 using Xabe.FFmpeg;
@@ -39,13 +38,11 @@ namespace auto_highlighter_back_end.Services
                 CreatedTimestamp = highlight.CreatedTimestamp
             };
             _repository.UpdateHighlight(highlight);
-
-            byte[] vod = GetVod(highlight.Hid);
+            
             List<int> timestamps = GetTimestamps(highlight.Hid);
+            List<HighlightTimeSpan> highlightTimeSpans = ToHighlightTimeSpans(timestamps);
 
-            await EditVideo(highlight.Hid, timestamps);
-
-            //await Task.Delay(1000); //simulate processing
+            await EditVideo(highlight.Hid, highlightTimeSpans);
 
             highlight = new()
             {
@@ -57,35 +54,34 @@ namespace auto_highlighter_back_end.Services
 
             _logger.LogInformation($"Finished video {highlight.Hid}");
         }
-
-        private async Task EditVideo(Guid hid, List<int> timestamps)
+        
+        private async Task EditVideo(Guid hid, List<HighlightTimeSpan> highlightTimeSpans)
         {
             string vodFilePath = Path.Combine(_env.ContentRootPath, _config.GetValue<string>("FileUploadLocation"), hid.ToString());
 
             IConversion conversion;
 
-            int startTime;
-            int endTime;
-            string[] fileNames = new string[timestamps.Count];
+            int start;
+            int duration;
+            string[] fileNames = new string[highlightTimeSpans.Count];
 
-            Task[] tasks = new Task[timestamps.Count];
-            for (int index = 0; index < timestamps.Count; index++)
+            Task[] tasks = new Task[highlightTimeSpans.Count];
+            for (int index = 0; index < highlightTimeSpans.Count; index++)
             {
-                endTime = timestamps[index];
-                startTime = endTime < 30000 ? 0 : endTime - 30000;
                 fileNames[index] = vodFilePath + index.ToString() + ".mp4";
+                start = highlightTimeSpans[index].Start;
+                duration = highlightTimeSpans[index].Duration;
 
-                _logger.LogInformation($"Start Time: {startTime} | End Time: {endTime} | File Name: {fileNames[index]}");
+                _logger.LogInformation($"Start Time: {start} | End Time: {start + duration} | File Name: {fileNames[index]}");
 
-                conversion = await FFmpeg.Conversions.FromSnippet.Split(vodFilePath + ".mp4", fileNames[index], TimeSpan.FromMilliseconds(startTime), TimeSpan.FromMilliseconds(30000));
+                conversion = await FFmpeg.Conversions.FromSnippet.Split(vodFilePath + ".mp4", fileNames[index], TimeSpan.FromMilliseconds(start), TimeSpan.FromMilliseconds(duration));
 
                 tasks[index] = conversion.Start();
             }
 
             await Task.WhenAll(tasks);
 
-
-            if (timestamps.Count > 1)
+            if (highlightTimeSpans.Count > 1)
             {
                 File.Delete(vodFilePath + ".mp4");
                 conversion = await FFmpeg.Conversions.FromSnippet.Concatenate(vodFilePath + ".mp4", fileNames);
@@ -96,17 +92,32 @@ namespace auto_highlighter_back_end.Services
             {
                 File.Delete(fileName);
             }
-
-
         }
 
-        private byte[] GetVod(Guid hid)
+        private List<HighlightTimeSpan> ToHighlightTimeSpans(List<int> timestamps)
         {
-            string filePath = Path.Combine(_env.ContentRootPath, _config.GetValue<string>("FileUploadLocation"), hid.ToString());
+            List<HighlightTimeSpan> highlightTimeSpans = new();
+            int highlightLength = int.Parse(_config["HighlightSettings:HighlightLength"]);
+            int startTime = -1;
+            for (int index = 0; index < timestamps.Count; index++)
+            {
+                if (startTime == -1)
+                {
+                    startTime = timestamps[index] - highlightLength;
 
-            string vodFilePath = filePath + ".mp4";
+                    if (startTime < 0)
+                    {
+                        startTime = 0;
+                    }
+                }
 
-            return File.ReadAllBytes(vodFilePath);
+                if (index == timestamps.Count - 1 || timestamps[index + 1] - highlightLength > timestamps[index])
+                {
+                    highlightTimeSpans.Add(new(startTime, timestamps[index] - startTime));
+                    startTime = -1;
+                }
+            }
+            return highlightTimeSpans;
         }
 
         private List<int> GetTimestamps(Guid hid)
@@ -119,5 +130,18 @@ namespace auto_highlighter_back_end.Services
             List<int> timestamps = JsonSerializer.Deserialize<List<int>>(file);
             return timestamps;
         }
+        
+    }
+
+    public struct HighlightTimeSpan
+    {
+        public HighlightTimeSpan(int start, int duration)
+        {
+            Start = start;
+            Duration = duration;
+        }
+
+        public int Start { get; }
+        public int Duration { get; }
     }
 }
