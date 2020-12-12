@@ -100,6 +100,11 @@ namespace auto_highlighter_back_end.Services
 
         }
 
+        private List<HighlightTimeSpan> ToHighlightTimeSpans(List<int> timestamps)
+        {
+            return null;
+        }
+
         private byte[] GetVod(Guid hid)
         {
             string filePath = Path.Combine(_env.ContentRootPath, _config.GetValue<string>("FileUploadLocation"), hid.ToString());
@@ -119,5 +124,17 @@ namespace auto_highlighter_back_end.Services
             List<int> timestamps = JsonSerializer.Deserialize<List<int>>(file);
             return timestamps;
         }
+    }
+
+    public struct HighlightTimeSpan
+    {
+        public HighlightTimeSpan(int start, int duration)
+        {
+            Start = start;
+            Duration = duration;
+        }
+
+        public int Start { get; }
+        public int Duration { get; }
     }
 }
