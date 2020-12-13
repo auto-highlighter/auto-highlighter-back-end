@@ -9,15 +9,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using auto_highlighter_back_end.Repository;
 using auto_highlighter_back_end.Entity;
-using System.IO.Compression;
 using System.IO;
 using Microsoft.Extensions.Configuration;
-using System.Net.Http;
 using Microsoft.AspNetCore.Http;
-using System.Text;
-using System.Net;
 using Microsoft.AspNetCore.Hosting;
 using auto_highlighter_back_end.Services;
+using auto_highlighter_back_end.Attributes;
 
 namespace auto_highlighter_back_end.Controllers
 {
@@ -29,20 +26,22 @@ namespace auto_highlighter_back_end.Controllers
         private readonly ITempHighlightRepo _repository;
         private readonly IConfiguration _config;
         private readonly IWebHostEnvironment _env;
+        //private readonly IBlobService _blobService;
+        private readonly IVideoProcessService _videoProcessService;
 
-        private readonly IBlobService _blobService;
-
-        public HighlightController(ITempHighlightRepo repository, ILogger<HighlightController> logger, IConfiguration config, IWebHostEnvironment env, IBlobService blobService)
+        public HighlightController(ITempHighlightRepo repository, ILogger<HighlightController> logger, IConfiguration config, IWebHostEnvironment env, IVideoProcessService videoProcessService)
         {
             _logger = logger;
             _repository = repository;
             _config = config;
             _env = env;
-            _blobService = blobService;
+            //_blobService = blobService;
+            _videoProcessService = videoProcessService;
 
         }
 
         [HttpGet]
+        [RateLimit(1000)]
         public IActionResult GetHighlights()
         {
 
@@ -54,29 +53,71 @@ namespace auto_highlighter_back_end.Controllers
         }
 
         [HttpGet("{hid}")]
-        public IActionResult DownloadHighlight(Guid hid)
+        [RateLimit(10000)]
+        public async Task<IActionResult> DownloadHighlight(Guid hid)
         {
 
             //get db stuff here instead of random numbers:)
-            HighlightStatusDTO response = _repository.GetHighlight(hid).AsDto();
+            HighlightEntity highlight = _repository.GetHighlight(hid);
 
-            if (response is null)
+            if (highlight is null)
             {
                 return NotFound();
             }
 
-            return File(Array.Empty<byte>(), "application/zip");
+            if (highlight.Status != HighlightStatusEnum.Done.ToString())
+            {
+                return Accepted(highlight);
+            }
+
+
+            string filePath = Path.Combine(_env.ContentRootPath, _config.GetValue<string>("FileUploadLocation"), hid.ToString());
+
+            string vodFilePath = filePath + ".mp4";
+            string timeStampsFilePath = filePath + ".json";
+
+            byte[] file = await System.IO.File.ReadAllBytesAsync(vodFilePath);
+
+            System.IO.File.Delete(vodFilePath);
+            System.IO.File.Delete(timeStampsFilePath);
+            _repository.RemoveHighlight(hid);
+
+            return File(file, "video/mp4");
         }
 
         [HttpPost]
-        public IActionResult CreateHighlight()
+        [RequestFormLimits(MultipartBodyLengthLimit = long.MaxValue)]
+        [DisableRequestSizeLimit]
+        [RateLimit(10000)]
+        public async Task<IActionResult> CreateHighlight(IFormFile vod, IFormFile timeStamps)
         {
 
-            //get db stuff here instead of random numbers:)
+            if (vod is null || timeStamps is null || vod.Length <= 0 || timeStamps.Length <= 0)
+            {
+                return BadRequest();
+            }
+
+            Guid hid = Guid.NewGuid();
+
+
+            string filePath = Path.Combine(_env.ContentRootPath, _config.GetValue<string>("FileUploadLocation"));
+
+            Directory.CreateDirectory(filePath);
+
+            string vodFilePath = Path.Combine(filePath, hid.ToString() + Path.GetExtension(vod.FileName));
+            string timeStampsFilePath = Path.Combine(filePath, hid.ToString() + Path.GetExtension(timeStamps.FileName));
+
+            using Stream vodFileStream = new FileStream(vodFilePath, FileMode.Create);
+            using Stream timeStampsFileStream = new FileStream(timeStampsFilePath, FileMode.Create);
+
+            _ = timeStamps.CopyToAsync(timeStampsFileStream);
+            await vod.CopyToAsync(vodFileStream);
+
+
             HighlightEntity highlightEntity = new()
             {
-                Hid = Guid.NewGuid(),
-                Status = HighlightStatusEnum.Processing.ToString(),
+                Hid = hid,
+                Status = HighlightStatusEnum.Ready.ToString(),
                 CreatedTimestamp = DateTimeOffset.UtcNow
             };
 
@@ -85,11 +126,29 @@ namespace auto_highlighter_back_end.Controllers
             return CreatedAtAction(nameof(CreateHighlight), new { id = highlightEntity.Hid }, highlightEntity.AsDto());
         }
 
+        [HttpPut("{hid}")]
+        [RateLimit(1000)]
+        public async Task<IActionResult> ProccessHighlight(Guid hid)
+        {
+
+            HighlightEntity highlight = _repository.GetHighlight(hid);
+            if (highlight is null)
+            {
+                return NotFound();
+            }
+
+            await _videoProcessService.ProcessHightlightAsync(highlight);
+            return NoContent();
+        }
+
         [HttpPost("[action]")]
         [RequestFormLimits(MultipartBodyLengthLimit = long.MaxValue)]
         [DisableRequestSizeLimit]
-        public async Task<IActionResult> Upload(IFormFile file)
+        [RateLimit(10000)]
+        public IActionResult UploadToBlob(IFormFile file)
         {
+            return StatusCode(StatusCodes.Status501NotImplemented);
+            /* Leaving all this commented for now for MVP 
             if (file is null)
             {
                 return BadRequest();
@@ -101,7 +160,7 @@ namespace auto_highlighter_back_end.Controllers
                     file.ContentType,
                     file.FileName);
 
-            return CreatedAtAction(nameof(CreateHighlight), result.AbsoluteUri);
+            return CreatedAtAction(nameof(CreateHighlight), result.AbsoluteUri);*/
         }
     }
 }

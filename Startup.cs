@@ -1,4 +1,5 @@
 using auto_highlighter_back_end.DataAccess;
+using auto_highlighter_back_end.Filters;
 using auto_highlighter_back_end.Repository;
 using auto_highlighter_back_end.Services;
 using Azure.Storage.Blobs;
@@ -13,16 +14,23 @@ using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Xabe.FFmpeg;
+using Xabe.FFmpeg.Downloader;
 
 namespace auto_highlighter_back_end
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
+
+        private readonly IConfiguration _config;
+        private readonly IWebHostEnvironment _env;
+        public Startup(IConfiguration config, IWebHostEnvironment env)
         {
-            Configuration = configuration;
+            _config = config;
+            _env = env;
         }
 
         public IConfiguration Configuration { get; }
@@ -45,7 +53,7 @@ namespace auto_highlighter_back_end
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public async void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
             {
@@ -53,6 +61,17 @@ namespace auto_highlighter_back_end
                 app.UseSwagger();
                 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "auto_highlighter_back_end v1"));
             }
+
+
+            string ffmpegLocation = Path.Combine(_env.ContentRootPath, _config["FFmpegSettings:ExecutableLocation"]);
+
+            if (!Directory.Exists(ffmpegLocation))
+            {
+                Directory.CreateDirectory(ffmpegLocation);
+                await FFmpegDownloader.GetLatestVersion(FFmpegVersion.Official, ffmpegLocation);
+            }
+
+            FFmpeg.SetExecutablesPath(ffmpegLocation, ffmpegExeutableName: "FFmpeg");
 
             app.UseRouting();
 

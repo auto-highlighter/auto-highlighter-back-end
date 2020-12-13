@@ -29,7 +29,7 @@ To run this repo you need an appsettings.json file that follows this format (jus
     "ExecutableLocation": "ffmpeg"
   },
   "ServiceBus": {
-    "Name": "higlight-queue"
+    "Name": "highlight-queue"
   }
 }
 ```
