@@ -38,7 +38,7 @@ namespace auto_highlighter_back_end.Services
                 CreatedTimestamp = highlight.CreatedTimestamp
             };
             _repository.UpdateHighlight(highlight);
-            
+
             List<int> timestamps = GetTimestamps(highlight.Hid);
             List<HighlightTimeSpan> highlightTimeSpans = ToHighlightTimeSpans(timestamps);
 
@@ -54,7 +54,7 @@ namespace auto_highlighter_back_end.Services
 
             _logger.LogInformation($"Finished video {highlight.Hid}");
         }
-        
+
         private async Task EditVideo(Guid hid, List<HighlightTimeSpan> highlightTimeSpans)
         {
             string vodFilePath = Path.Combine(_env.ContentRootPath, _config.GetValue<string>("FileUploadLocation"), hid.ToString());
@@ -130,7 +130,7 @@ namespace auto_highlighter_back_end.Services
             List<int> timestamps = JsonSerializer.Deserialize<List<int>>(file);
             return timestamps;
         }
-        
+
     }
 
     public struct HighlightTimeSpan
