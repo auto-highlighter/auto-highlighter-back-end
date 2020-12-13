@@ -130,7 +130,7 @@ namespace auto_highlighter_back_end.Controllers
                 Hid = hid
             };
 
-            await _messageQueue.SendMessageAsync(JsonSerializer.Serialize<ProccessVodDTO>(proccessVodDTO));
+            await _messageQueue.SendMessageAsync(JsonSerializer.Serialize(proccessVodDTO));
 
             return CreatedAtAction(nameof(CreateHighlight), new { id = highlightEntity.Hid }, highlightEntity.AsDto());
         }

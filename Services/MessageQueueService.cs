@@ -30,6 +30,7 @@ namespace auto_highlighter_back_end.Services
         }
         public async Task SendMessageAsync(byte[] messageBody)
         {
+            _logger.LogInformation("Started sending message");
             // create a sender for the queue 
             ServiceBusSender sender = _serviceBusClient.CreateSender(_config["ServiceBus:Name"]);
 
@@ -37,7 +38,15 @@ namespace auto_highlighter_back_end.Services
             ServiceBusMessage message = new ServiceBusMessage(messageBody);
 
             // send the message
-            await sender.SendMessageAsync(message);
+            try
+            {
+                await sender.SendMessageAsync(message);
+                _logger.LogInformation("Message sent");
+            }
+            catch (Exception e)
+            {
+                _logger.LogInformation($"Failed to send {e.Message}");
+            }
         }
 
 
