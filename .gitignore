@@ -4,3 +4,4 @@ bin/*
 *.vs
 Properties/PublishProfiles/*
 appsettings.json
+ffmpeg/*

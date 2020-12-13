@@ -31,10 +31,13 @@ namespace auto_highlighter_back_end
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddSingleton<ITempHighlightRepo, TempHighlightRepo>();
-            services.AddScoped(x => new BlobServiceClient(Configuration["ConnectionStrings:AzureBlobStorage"]));
-            services.AddScoped<IBlobService, BlobService>();
-            //services.AddDbContext<HighlightContext>(options => { options.UseSqlServer(); });
-            services.AddControllers();
+            services.AddSingleton<IVideoProcessService, VideoProcessService>();
+            services.AddSingleton<IMessageQueueService, MessageQueueService>();
+
+            services.AddControllers(options =>
+            {
+                options.Filters.Add<RateLimitActionFilter>();
+            });
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "auto_highlighter_back_end", Version = "v1" });
@@ -59,6 +62,9 @@ namespace auto_highlighter_back_end
             {
                 endpoints.MapControllers();
             });
+
+            IMessageQueueService mq = app.ApplicationServices.GetService<IMessageQueueService>();
+            mq.ReceiveMessagesAsync();
         }
     }
 }
