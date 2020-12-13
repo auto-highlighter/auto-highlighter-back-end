@@ -2,22 +2,33 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using auto_highlighter_back_end.DTOs;
+using auto_highlighter_back_end.Entity;
+using auto_highlighter_back_end.Repository;
 using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Utf8Json;
 
 namespace auto_highlighter_back_end.Services
 {
     public class MessageQueueService : IMessageQueueService
     {
+        private readonly ILogger _logger;
         private readonly ServiceBusClient _serviceBusClient;
         private readonly IConfiguration _config;
+        private readonly IVideoProcessService _videoProcessService;
+        private readonly ITempHighlightRepo _repository;
 
-        public MessageQueueService(ServiceBusClient serviceBusClient, IConfiguration config)
+        public MessageQueueService(ILogger<IMessageQueueService> logger, ServiceBusClient serviceBusClient, IConfiguration config, IVideoProcessService videoProcessService, ITempHighlightRepo repository)
         {
+            _logger = logger;
             _serviceBusClient = serviceBusClient;
             _config = config;
+            _videoProcessService = videoProcessService;
+            _repository = repository;
         }
-        public async Task SendMessageAsync(string messageBody)
+        public async Task SendMessageAsync(byte[] messageBody)
         {
             // create a sender for the queue 
             ServiceBusSender sender = _serviceBusClient.CreateSender(_config["ServiceBus:Name"]);
@@ -49,7 +60,17 @@ namespace auto_highlighter_back_end.Services
         private async Task MessageHandler(ProcessMessageEventArgs args)
         {
             string body = args.Message.Body.ToString();
-            Console.WriteLine($"Received: {body}");
+
+
+            _logger.LogInformation($"Recieved message {body}");
+
+            ProccessVodDTO proccessVodDTO = JsonSerializer.Deserialize<ProccessVodDTO>(body);
+            HighlightEntity highlight = _repository.GetHighlight(proccessVodDTO.Hid);
+
+            if (highlight is not null)
+            {
+                _ = _videoProcessService.ProcessHightlightAsync(highlight);
+            }
 
             // complete the message. messages is deleted from the queue. 
             await args.CompleteMessageAsync(args.Message);

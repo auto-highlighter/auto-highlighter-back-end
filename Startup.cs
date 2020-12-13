@@ -2,6 +2,7 @@ using auto_highlighter_back_end.DataAccess;
 using auto_highlighter_back_end.Filters;
 using auto_highlighter_back_end.Repository;
 using auto_highlighter_back_end.Services;
+using Azure.Messaging.ServiceBus;
 using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -24,7 +25,6 @@ namespace auto_highlighter_back_end
 {
     public class Startup
     {
-
         private readonly IConfiguration _config;
         private readonly IWebHostEnvironment _env;
         public Startup(IConfiguration config, IWebHostEnvironment env)
@@ -33,13 +33,13 @@ namespace auto_highlighter_back_end
             _env = env;
         }
 
-        public IConfiguration Configuration { get; }
-
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddMemoryCache();
             services.AddSingleton<ITempHighlightRepo, TempHighlightRepo>();
             services.AddSingleton<IVideoProcessService, VideoProcessService>();
+            services.AddSingleton(x => new ServiceBusClient(_config["ConnectionStrings:AzureServiceBus"]));
             services.AddSingleton<IMessageQueueService, MessageQueueService>();
 
             services.AddControllers(options =>
@@ -81,9 +81,9 @@ namespace auto_highlighter_back_end
             {
                 endpoints.MapControllers();
             });
-
-            IMessageQueueService mq = app.ApplicationServices.GetService<IMessageQueueService>();
-            mq.ReceiveMessagesAsync();
+            IServiceProvider sp = app.ApplicationServices;
+            IMessageQueueService mq = sp.GetService<IMessageQueueService>();
+            await mq.ReceiveMessagesAsync();
         }
     }
 }

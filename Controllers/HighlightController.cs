@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
 using auto_highlighter_back_end.Services;
 using auto_highlighter_back_end.Attributes;
+using Utf8Json;
 
 namespace auto_highlighter_back_end.Controllers
 {
@@ -28,8 +29,9 @@ namespace auto_highlighter_back_end.Controllers
         private readonly IWebHostEnvironment _env;
         //private readonly IBlobService _blobService;
         private readonly IVideoProcessService _videoProcessService;
+        private readonly IMessageQueueService _messageQueue;
 
-        public HighlightController(ITempHighlightRepo repository, ILogger<HighlightController> logger, IConfiguration config, IWebHostEnvironment env, IVideoProcessService videoProcessService)
+        public HighlightController(ITempHighlightRepo repository, ILogger<HighlightController> logger, IConfiguration config, IWebHostEnvironment env, IVideoProcessService videoProcessService, IMessageQueueService messageQueue)
         {
             _logger = logger;
             _repository = repository;
@@ -37,7 +39,7 @@ namespace auto_highlighter_back_end.Controllers
             _env = env;
             //_blobService = blobService;
             _videoProcessService = videoProcessService;
-
+            _messageQueue = messageQueue;
         }
 
         [HttpGet]
@@ -123,44 +125,14 @@ namespace auto_highlighter_back_end.Controllers
 
             _repository.CreateHighlight(highlightEntity);
 
+            ProccessVodDTO proccessVodDTO = new()
+            {
+                Hid = hid
+            };
+
+            await _messageQueue.SendMessageAsync(JsonSerializer.Serialize<ProccessVodDTO>(proccessVodDTO));
+
             return CreatedAtAction(nameof(CreateHighlight), new { id = highlightEntity.Hid }, highlightEntity.AsDto());
-        }
-
-        [HttpPut("{hid}")]
-        [RateLimit(1000)]
-        public async Task<IActionResult> ProccessHighlight(Guid hid)
-        {
-
-            HighlightEntity highlight = _repository.GetHighlight(hid);
-            if (highlight is null)
-            {
-                return NotFound();
-            }
-
-            await _videoProcessService.ProcessHightlightAsync(highlight);
-            return NoContent();
-        }
-
-        [HttpPost("[action]")]
-        [RequestFormLimits(MultipartBodyLengthLimit = long.MaxValue)]
-        [DisableRequestSizeLimit]
-        [RateLimit(10000)]
-        public IActionResult UploadToBlob(IFormFile file)
-        {
-            return StatusCode(StatusCodes.Status501NotImplemented);
-            /* Leaving all this commented for now for MVP 
-            if (file is null)
-            {
-                return BadRequest();
-            }
-
-            Uri result = await _blobService.UploadFileBlobAsync(
-                    "firstcontainer",
-                    file.OpenReadStream(),
-                    file.ContentType,
-                    file.FileName);
-
-            return CreatedAtAction(nameof(CreateHighlight), result.AbsoluteUri);*/
         }
     }
 }

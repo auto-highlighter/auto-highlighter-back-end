@@ -5,6 +5,6 @@ namespace auto_highlighter_back_end.Services
     public interface IMessageQueueService
     {
         Task ReceiveMessagesAsync();
-        Task SendMessageAsync(string messageBody);
+        Task SendMessageAsync(byte[] messageBody);
     }
 }
