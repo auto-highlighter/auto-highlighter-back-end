@@ -1,6 +1,7 @@
 ﻿using auto_highlighter_back_end.Entity;
 using auto_highlighter_back_end.Enums;
 using auto_highlighter_back_end.Repository;
+using Azure.Storage.Blobs.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -16,41 +17,29 @@ namespace auto_highlighter_back_end.Services
     public class VideoProcessService : IVideoProcessService
     {
         private readonly ILogger _logger;
-        private readonly ITempHighlightRepo _repository;
         private readonly IConfiguration _config;
         private readonly IWebHostEnvironment _env;
+        private readonly IBlobService _blobService;
 
-        public VideoProcessService(ILogger<IVideoProcessService> logger, ITempHighlightRepo repository, IConfiguration config, IWebHostEnvironment env)
+        public VideoProcessService(ILogger<IVideoProcessService> logger, IConfiguration config, IWebHostEnvironment env, IBlobService blobService)
         {
             _logger = logger;
-            _repository = repository;
             _config = config;
             _env = env;
+            _blobService = blobService;
         }
         public async Task ProcessHightlightAsync(HighlightEntity highlight)
         {
             _logger.LogInformation($"Processing video {highlight.Hid}");
 
-            highlight = new()
-            {
-                Hid = highlight.Hid,
-                Status = HighlightStatusEnum.Processing.ToString(),
-                CreatedTimestamp = highlight.CreatedTimestamp
-            };
-            _repository.UpdateHighlight(highlight);
-
-            List<int> timestamps = GetTimestamps(highlight.Hid);
+            List<int> timestamps = await GetTimestamps(highlight.Hid);
             List<HighlightTimeSpan> highlightTimeSpans = ToHighlightTimeSpans(timestamps);
+
+            await DownloadVodFromBlob(highlight.Hid);
 
             await EditVideo(highlight.Hid, highlightTimeSpans);
 
-            highlight = new()
-            {
-                Hid = highlight.Hid,
-                Status = HighlightStatusEnum.Done.ToString(),
-                CreatedTimestamp = highlight.CreatedTimestamp
-            };
-            _repository.UpdateHighlight(highlight);
+            await UploadEditedVod(highlight.Hid);
 
             _logger.LogInformation($"Finished video {highlight.Hid}");
         }
@@ -92,6 +81,8 @@ namespace auto_highlighter_back_end.Services
             {
                 File.Delete(fileName);
             }
+
+
         }
 
         private List<HighlightTimeSpan> ToHighlightTimeSpans(List<int> timestamps)
@@ -120,15 +111,42 @@ namespace auto_highlighter_back_end.Services
             return highlightTimeSpans;
         }
 
-        private List<int> GetTimestamps(Guid hid)
+        private async Task<List<int>> GetTimestamps(Guid hid)
         {
-            string filePath = Path.Combine(_env.ContentRootPath, _config.GetValue<string>("FileUploadLocation"), hid.ToString());
-            string timeStampsFilePath = filePath + ".json";
+            BlobDownloadInfo blob = await _blobService.GetBlobAsync(_config["BlobSettings:ContainerName"], hid.ToString() + ".json");
 
-            byte[] file = File.ReadAllBytes(timeStampsFilePath);
-
-            List<int> timestamps = JsonSerializer.Deserialize<List<int>>(file);
+            List<int> timestamps = JsonSerializer.Deserialize<List<int>>(blob.Content);
             return timestamps;
+        }
+
+        private async Task DownloadVodFromBlob(Guid hid)
+        {
+
+            string vodFilePath = Path.Combine(_env.ContentRootPath, _config.GetValue<string>("FileUploadLocation"), hid.ToString() + ".mp4");
+
+            BlobDownloadInfo vod = await _blobService.GetBlobAsync(_config["BlobSettings:ContainerName"], hid.ToString() + ".mp4");
+
+            using Stream vodFileStream = new FileStream(vodFilePath, FileMode.Create);
+
+            await vod.Content.CopyToAsync(vodFileStream);
+        }
+
+        private async Task UploadEditedVod(Guid hid)
+        {
+
+            string vodFilePath = Path.Combine(_env.ContentRootPath, _config.GetValue<string>("FileUploadLocation"), hid.ToString() + ".mp4");
+
+            using (Stream vod = File.OpenRead(vodFilePath))
+            {
+
+                await _blobService.UploadFileBlobAsync(
+                        _config["BlobSettings:ContainerName"],
+                        vod,
+                        "video/mp4",
+                        hid + ".mp4");
+            }
+
+            File.Delete(vodFilePath);
         }
 
     }

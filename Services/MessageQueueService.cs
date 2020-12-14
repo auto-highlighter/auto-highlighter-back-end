@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using auto_highlighter_back_end.DTOs;
 using auto_highlighter_back_end.Entity;
+using auto_highlighter_back_end.Enums;
 using auto_highlighter_back_end.Repository;
 using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Configuration;
@@ -31,13 +32,11 @@ namespace auto_highlighter_back_end.Services
         public async Task SendMessageAsync(byte[] messageBody)
         {
             _logger.LogInformation("Started sending message");
-            // create a sender for the queue 
-            ServiceBusSender sender = _serviceBusClient.CreateSender(_config["ServiceBus:Name"]);
 
-            // create a message that we can send
+            ServiceBusSender sender = _serviceBusClient.CreateSender(_config["ServiceBus:QueueName"]);
+
             ServiceBusMessage message = new ServiceBusMessage(messageBody);
 
-            // send the message
             try
             {
                 await sender.SendMessageAsync(message);
@@ -52,16 +51,11 @@ namespace auto_highlighter_back_end.Services
 
         public async Task ReceiveMessagesAsync()
         {
-            // create a processor that we can use to process the messages
-            ServiceBusProcessor processor = _serviceBusClient.CreateProcessor(_config["ServiceBus:Name"], new ServiceBusProcessorOptions());
+            ServiceBusProcessor processor = _serviceBusClient.CreateProcessor(_config["ServiceBus:QueueName"], new ServiceBusProcessorOptions());
 
-            // add handler to process messages
             processor.ProcessMessageAsync += MessageHandler;
-
-            // add handler to process any errors
             processor.ProcessErrorAsync += ErrorHandler;
 
-            // start processing 
             await processor.StartProcessingAsync();
         }
 
@@ -72,16 +66,40 @@ namespace auto_highlighter_back_end.Services
 
 
             _logger.LogInformation($"Recieved message {body}");
-
-            ProccessVodDTO proccessVodDTO = JsonSerializer.Deserialize<ProccessVodDTO>(body);
-            HighlightEntity highlight = _repository.GetHighlight(proccessVodDTO.Hid);
-
-            if (highlight is not null)
+            try
             {
-                _ = _videoProcessService.ProcessHightlightAsync(highlight);
+
+                ProccessVodDTO proccessVodDTO = JsonSerializer.Deserialize<ProccessVodDTO>(body);
+                HighlightEntity highlight = _repository.GetHighlight(proccessVodDTO.Hid);
+
+                if (highlight is not null)
+                {
+                    Task processVod = _videoProcessService.ProcessHightlightAsync(highlight);
+
+                    highlight = new()
+                    {
+                        Hid = highlight.Hid,
+                        Status = HighlightStatusEnum.Processing.ToString(),
+                        CreatedTimestamp = highlight.CreatedTimestamp
+                    };
+                    _repository.UpdateHighlight(highlight);
+
+                    processVod.Wait();
+
+                    highlight = new()
+                    {
+                        Hid = highlight.Hid,
+                        Status = HighlightStatusEnum.Done.ToString(),
+                        CreatedTimestamp = highlight.CreatedTimestamp
+                    };
+                    _repository.UpdateHighlight(highlight);
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogInformation($"caught exception in message {body} processing: {e.Message}");
             }
 
-            // complete the message. messages is deleted from the queue. 
             await args.CompleteMessageAsync(args.Message);
         }
 

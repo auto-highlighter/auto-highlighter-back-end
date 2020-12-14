@@ -45,10 +45,15 @@ namespace auto_highlighter_back_end
             });
 
             services.AddMemoryCache();
+
             services.AddSingleton<ITempHighlightRepo, TempHighlightRepo>();
             services.AddSingleton<IVideoProcessService, VideoProcessService>();
+
             services.AddSingleton(x => new ServiceBusClient(_config["ConnectionStrings:AzureServiceBus"]));
             services.AddSingleton<IMessageQueueService, MessageQueueService>();
+
+            services.AddSingleton(x => new BlobServiceClient(_config["ConnectionStrings:AzureBlobStorage"]));
+            services.AddSingleton<IBlobService, BlobService>();
 
             services.AddControllers(options =>
             {
