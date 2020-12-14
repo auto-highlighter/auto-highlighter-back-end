@@ -136,13 +136,15 @@ namespace auto_highlighter_back_end.Services
 
             string vodFilePath = Path.Combine(_env.ContentRootPath, _config.GetValue<string>("FileUploadLocation"), hid.ToString() + ".mp4");
 
-            using Stream vod = new FileStream(vodFilePath, FileMode.Create);
+            using (Stream vod = File.OpenRead(vodFilePath))
+            {
 
-            await _blobService.UploadFileBlobAsync(
-                    _config["BlobSettings:ContainerName"],
-                    vod,
-                    "video/mp4",
-                    hid + ".mp4");
+                await _blobService.UploadFileBlobAsync(
+                        _config["BlobSettings:ContainerName"],
+                        vod,
+                        "video/mp4",
+                        hid + ".mp4");
+            }
 
             File.Delete(vodFilePath);
         }

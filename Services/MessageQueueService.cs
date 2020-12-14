@@ -66,31 +66,38 @@ namespace auto_highlighter_back_end.Services
 
 
             _logger.LogInformation($"Recieved message {body}");
-
-            ProccessVodDTO proccessVodDTO = JsonSerializer.Deserialize<ProccessVodDTO>(body);
-            HighlightEntity highlight = _repository.GetHighlight(proccessVodDTO.Hid);
-
-            if (highlight is not null)
+            try
             {
-                Task processVod = _videoProcessService.ProcessHightlightAsync(highlight);
 
-                highlight = new()
+                ProccessVodDTO proccessVodDTO = JsonSerializer.Deserialize<ProccessVodDTO>(body);
+                HighlightEntity highlight = _repository.GetHighlight(proccessVodDTO.Hid);
+
+                if (highlight is not null)
                 {
-                    Hid = highlight.Hid,
-                    Status = HighlightStatusEnum.Processing.ToString(),
-                    CreatedTimestamp = highlight.CreatedTimestamp
-                };
-                _repository.UpdateHighlight(highlight);
+                    Task processVod = _videoProcessService.ProcessHightlightAsync(highlight);
 
-                processVod.Wait();
+                    highlight = new()
+                    {
+                        Hid = highlight.Hid,
+                        Status = HighlightStatusEnum.Processing.ToString(),
+                        CreatedTimestamp = highlight.CreatedTimestamp
+                    };
+                    _repository.UpdateHighlight(highlight);
 
-                highlight = new()
-                {
-                    Hid = highlight.Hid,
-                    Status = HighlightStatusEnum.Done.ToString(),
-                    CreatedTimestamp = highlight.CreatedTimestamp
-                };
-                _repository.UpdateHighlight(highlight);
+                    processVod.Wait();
+
+                    highlight = new()
+                    {
+                        Hid = highlight.Hid,
+                        Status = HighlightStatusEnum.Done.ToString(),
+                        CreatedTimestamp = highlight.CreatedTimestamp
+                    };
+                    _repository.UpdateHighlight(highlight);
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogInformation($"caught exception in message {body} processing: {e.Message}");
             }
 
             await args.CompleteMessageAsync(args.Message);
