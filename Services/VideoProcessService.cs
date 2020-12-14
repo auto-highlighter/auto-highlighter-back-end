@@ -66,12 +66,6 @@ namespace auto_highlighter_back_end.Services
 
                 conversion = await FFmpeg.Conversions.FromSnippet.Split(vodFilePath + ".mp4", fileNames[index], TimeSpan.FromMilliseconds(start), TimeSpan.FromMilliseconds(duration));
 
-                conversion.OnProgress += (sender, args) =>
-                {
-                    var percent = (int)(Math.Round(args.Duration.TotalSeconds / args.TotalLength.TotalSeconds, 2) * 100);
-                    _logger.LogInformation($"[{args.Duration} / {args.TotalLength}] {percent}%");
-                };
-
                 tasks[index] = conversion.Start();
             }
 
@@ -81,12 +75,6 @@ namespace auto_highlighter_back_end.Services
             {
                 File.Delete(vodFilePath + ".mp4");
                 conversion = await FFmpeg.Conversions.FromSnippet.Concatenate(vodFilePath + ".mp4", fileNames);
-
-                conversion.OnProgress += (sender, args) =>
-                {
-                    var percent = (int)(Math.Round(args.Duration.TotalSeconds / args.TotalLength.TotalSeconds, 2) * 100);
-                    _logger.LogInformation($"[{args.Duration} / {args.TotalLength}] {percent}%");
-                };
 
                 await conversion.Start();
             }
