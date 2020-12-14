@@ -17,12 +17,26 @@ namespace auto_highlighter_back_end.Services
             _blobServiceClient = blobServiceClient;
         }
 
+        public async Task<BlobDownloadInfo> GetBlobAsync(string blobContainerName, string fileName)
+        {
+            var containerClient = GetContainerClient(blobContainerName);
+            var blobClient = containerClient.GetBlobClient(fileName);
+            return await blobClient.DownloadAsync();
+        }
+
         public async Task<Uri> UploadFileBlobAsync(string blobContainerName, Stream content, string contentType, string fileName)
         {
             var containerClient = GetContainerClient(blobContainerName);
             var blobClient = containerClient.GetBlobClient(fileName);
             await blobClient.UploadAsync(content, new BlobHttpHeaders { ContentType = contentType });
             return blobClient.Uri;
+        }
+
+        public async Task DeleteBlobAsync(string blobContainerName, string fileName)
+        {
+            var containerClient = GetContainerClient(blobContainerName);
+            var blobClient = containerClient.GetBlobClient(fileName);
+            await blobClient.DeleteIfExistsAsync();
         }
 
         private BlobContainerClient GetContainerClient(string blobContainerName)
