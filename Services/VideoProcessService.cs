@@ -54,10 +54,6 @@ namespace auto_highlighter_back_end.Services
             int start;
             int duration;
             string[] fileNames = new string[highlightTimeSpans.Count];
-            CancellationTokenSource splitCancellation = new();
-            CancellationTokenSource mergeCancellation = new();
-            splitCancellation.CancelAfter(30000);
-            mergeCancellation.CancelAfter(120000);
 
             Task[] tasks = new Task[highlightTimeSpans.Count];
             for (int index = 0; index < highlightTimeSpans.Count; index++)
@@ -76,7 +72,7 @@ namespace auto_highlighter_back_end.Services
                     _logger.LogInformation($"[{args.Duration} / {args.TotalLength}] {percent}%");
                 };
 
-                tasks[index] = conversion.Start(splitCancellation.Token);
+                tasks[index] = conversion.Start();
             }
 
             await Task.WhenAll(tasks);
@@ -92,7 +88,7 @@ namespace auto_highlighter_back_end.Services
                     _logger.LogInformation($"[{args.Duration} / {args.TotalLength}] {percent}%");
                 };
 
-                await conversion.Start(mergeCancellation.Token);
+                await conversion.Start();
             }
 
             foreach (string fileName in fileNames)
