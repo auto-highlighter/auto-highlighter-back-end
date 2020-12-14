@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Utf8Json;
 using Xabe.FFmpeg;
@@ -53,6 +54,10 @@ namespace auto_highlighter_back_end.Services
             int start;
             int duration;
             string[] fileNames = new string[highlightTimeSpans.Count];
+            CancellationTokenSource splitCancellation = new();
+            CancellationTokenSource mergeCancellation = new();
+            splitCancellation.CancelAfter(30000);
+            mergeCancellation.CancelAfter(120000);
 
             Task[] tasks = new Task[highlightTimeSpans.Count];
             for (int index = 0; index < highlightTimeSpans.Count; index++)
@@ -65,7 +70,13 @@ namespace auto_highlighter_back_end.Services
 
                 conversion = await FFmpeg.Conversions.FromSnippet.Split(vodFilePath + ".mp4", fileNames[index], TimeSpan.FromMilliseconds(start), TimeSpan.FromMilliseconds(duration));
 
-                tasks[index] = conversion.Start();
+                conversion.OnProgress += (sender, args) =>
+                {
+                    var percent = (int)(Math.Round(args.Duration.TotalSeconds / args.TotalLength.TotalSeconds, 2) * 100);
+                    _logger.LogInformation($"[{args.Duration} / {args.TotalLength}] {percent}%");
+                };
+
+                tasks[index] = conversion.Start(splitCancellation.Token);
             }
 
             await Task.WhenAll(tasks);
@@ -74,7 +85,14 @@ namespace auto_highlighter_back_end.Services
             {
                 File.Delete(vodFilePath + ".mp4");
                 conversion = await FFmpeg.Conversions.FromSnippet.Concatenate(vodFilePath + ".mp4", fileNames);
-                await conversion.Start();
+
+                conversion.OnProgress += (sender, args) =>
+                {
+                    var percent = (int)(Math.Round(args.Duration.TotalSeconds / args.TotalLength.TotalSeconds, 2) * 100);
+                    _logger.LogInformation($"[{args.Duration} / {args.TotalLength}] {percent}%");
+                };
+
+                await conversion.Start(mergeCancellation.Token);
             }
 
             foreach (string fileName in fileNames)
