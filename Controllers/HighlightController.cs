@@ -9,13 +9,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using auto_highlighter_back_end.Repository;
 using auto_highlighter_back_end.Entity;
-using System.IO.Compression;
 using System.IO;
 using Microsoft.Extensions.Configuration;
-using System.Net.Http;
 using Microsoft.AspNetCore.Http;
-using System.Text;
-using System.Net;
 using Microsoft.AspNetCore.Hosting;
 using auto_highlighter_back_end.Services;
 using auto_highlighter_back_end.Attributes;
@@ -48,6 +44,7 @@ namespace auto_highlighter_back_end.Controllers
         }
 
         [HttpGet]
+        [RateLimit(1000)]
         public IActionResult GetHighlights()
         {
 
@@ -59,13 +56,14 @@ namespace auto_highlighter_back_end.Controllers
         }
 
         [HttpGet("{hid}")]
-        public IActionResult DownloadHighlight(Guid hid)
+        [RateLimit(10000)]
+        public async Task<IActionResult> DownloadHighlight(Guid hid)
         {
 
             //get db stuff here instead of random numbers:)
-            HighlightStatusDTO response = _repository.GetHighlight(hid).AsDto();
+            HighlightEntity highlight = _repository.GetHighlight(hid);
 
-            if (response is null)
+            if (highlight is null)
             {
                 return NotFound();
             }
@@ -89,7 +87,10 @@ namespace auto_highlighter_back_end.Controllers
         }
 
         [HttpPost]
-        public IActionResult CreateHighlight()
+        [RequestFormLimits(MultipartBodyLengthLimit = long.MaxValue)]
+        [DisableRequestSizeLimit]
+        [RateLimit(10000)]
+        public async Task<IActionResult> CreateHighlight(IFormFile vod, IFormFile timeStamps)
         {
 
             if (vod is null || timeStamps is null || vod.Length <= 0 || timeStamps.Length <= 0)
@@ -132,33 +133,21 @@ namespace auto_highlighter_back_end.Controllers
 
             HighlightEntity highlightEntity = new()
             {
-                Hid = Guid.NewGuid(),
-                Status = HighlightStatusEnum.Processing.ToString(),
+                Hid = hid,
+                Status = HighlightStatusEnum.Ready.ToString(),
                 CreatedTimestamp = DateTimeOffset.UtcNow
             };
 
             _repository.CreateHighlight(highlightEntity);
 
-            return CreatedAtAction(nameof(CreateHighlight), new { id = highlightEntity.Hid }, highlightEntity.AsDto());
-        }
-
-        [HttpPost("[action]")]
-        [RequestFormLimits(MultipartBodyLengthLimit = long.MaxValue)]
-        [DisableRequestSizeLimit]
-        public async Task<IActionResult> Upload(IFormFile file)
-        {
-            if (file is null)
+            ProccessVodDTO proccessVodDTO = new()
             {
-                return BadRequest();
-            }
+                Hid = hid
+            };
 
-            Uri result = await _blobService.UploadFileBlobAsync(
-                    "firstcontainer",
-                    file.OpenReadStream(),
-                    file.ContentType,
-                    file.FileName);
+            await _messageQueue.SendMessageAsync(JsonSerializer.Serialize(proccessVodDTO));
 
-            return CreatedAtAction(nameof(CreateHighlight), result.AbsoluteUri);
+            return CreatedAtAction(nameof(CreateHighlight), new { id = highlightEntity.Hid }, highlightEntity.AsDto());
         }
 
         [HttpPost("[action]")]
