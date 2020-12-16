@@ -71,12 +71,16 @@ namespace auto_highlighter_back_end.Services
 
             await Task.WhenAll(tasks);
 
+            File.Delete(vodFilePath + ".mp4");
             if (highlightTimeSpans.Count > 1)
             {
-                File.Delete(vodFilePath + ".mp4");
                 conversion = await FFmpeg.Conversions.FromSnippet.Concatenate(vodFilePath + ".mp4", fileNames);
 
                 await conversion.Start();
+            }
+            else
+            {
+                File.Copy(fileNames[0], vodFilePath + ".mp4");
             }
 
             foreach (string fileName in fileNames)

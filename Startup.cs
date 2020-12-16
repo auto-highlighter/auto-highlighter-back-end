@@ -63,6 +63,10 @@ namespace auto_highlighter_back_end
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "auto_highlighter_back_end", Version = "v1" });
             });
+            services.AddCors(c =>
+            {
+                c.AddPolicy("AllowOrigin", options => options.AllowAnyOrigin());
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -85,6 +89,8 @@ namespace auto_highlighter_back_end
             }
 
             FFmpeg.SetExecutablesPath(ffmpegLocation, ffmpegExeutableName: "FFmpeg");
+
+            app.UseCors(options => options.AllowAnyOrigin());
 
             app.UseRouting();
 
