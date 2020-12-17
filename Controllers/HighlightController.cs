@@ -43,18 +43,6 @@ namespace auto_highlighter_back_end.Controllers
             _messageQueue = messageQueue;
         }
 
-        [HttpGet]
-        [RateLimit(1000)]
-        public IActionResult GetHighlights()
-        {
-
-            //get db stuff here instead of random numbers:)
-
-            IEnumerable<HighlightStatusDTO> response = from highlightEntity in _repository.GetHighlights() select highlightEntity.AsDto();
-
-            return Ok(response);
-        }
-
         [HttpGet("{hid}")]
         [RateLimit(10000)]
         public async Task<IActionResult> DownloadHighlight(Guid hid)
